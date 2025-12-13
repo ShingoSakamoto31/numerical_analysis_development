@@ -18,6 +18,7 @@ from analysisrun.runner import AnalyzeArgs, ParallelRunner, PostprocessArgs
 from clustering import (
     cela3a_filtering,
     scatter_image_output,
+    whole_scatter_image_output,
     calculate_cela3a,
     calculate_required_number_of_measurements,
 )
@@ -84,6 +85,7 @@ def analyze(args: AnalyzeArgs[Context]) -> pd.Series:
 
     df_cela3a, green_cela3a, red_cela3a = cela3a_filtering(df_new, df_filter)
     scatter_image_output(green_cela3a, red_cela3a, fields, sample, output)
+    whole_scatter_image_output(green, red, fields, sample, output)
     cela3a, cela3a_unit = calculate_cela3a(green_cela3a, total_wells)
     required_number_of_measurements = calculate_required_number_of_measurements(
         green_cela3a, total_wells

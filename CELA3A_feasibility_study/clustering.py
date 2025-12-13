@@ -55,10 +55,31 @@ def scatter_image_output(green_cela3a, red_cela3a, fields, sample, output):
     axes.tick_params(labelsize=24)
 
     scatter_fig.tight_layout()
-    axes.set_title(f"{fields.data_name}_{sample}_scatter.png", fontsize=16)
+    axes.set_title(f"{sample}_{fields.data_name}", fontsize=16)
     output(
         scatter_fig,
-        f"{fields.data_name}_{sample}_scatter.png",
+        f"{sample}_{fields.data_name}_scatter.png",
+        "scatter",
+        bbox_inches="tight",
+    )
+
+
+def whole_scatter_image_output(green, red, fields, sample, output):
+    scatter_fig = plt.figure(figsize=(8.7, 8))
+    axes = scatter_fig.gca()
+    axes.scatter(green, red, color="black", s=3)
+    # axes.vlines(THRESHOLD, 0, 50000, colors="red", linestyles="dashed", linewidth=3)
+    axes.set_xlabel("Green fluorescence intensity (a.u.)", fontsize=24)
+    axes.set_ylabel("Red fluorescence intensity (a.u.)", fontsize=24)
+    axes.set_xlim(0, 50000)
+    axes.set_ylim(0, 50000)
+    axes.tick_params(labelsize=24)
+
+    scatter_fig.tight_layout()
+    axes.set_title(f"{sample}_{fields.data_name}", fontsize=16)
+    output(
+        scatter_fig,
+        f"{sample}_{fields.data_name}_wholescatter.png",
         "scatter",
         bbox_inches="tight",
     )

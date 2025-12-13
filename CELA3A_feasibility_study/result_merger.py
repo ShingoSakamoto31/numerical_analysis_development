@@ -164,42 +164,109 @@ def copy_scatter_files(
     return scatter_folder
 
 
+def find_wholescatter_files(root_path: Path) -> list[Path]:
+    """'_wholescatter'で終わるファイルをすべて見つける（サブフォルダも含む）
+
+    Args:
+        root_path: 検索対象のルートパス
+
+    Returns:
+        見つかったファイルのパスリスト
+    """
+    if not root_path.exists():
+        raise FileNotFoundError(f"パスが見つかりません: {root_path}")
+
+    if not root_path.is_dir():
+        raise ValueError(f"ディレクトリではありません: {root_path}")
+
+    wholescatter_files = list(root_path.glob("**/*_wholescatter*"))
+    return sorted(wholescatter_files)
+
+
+def copy_wholescatter_files(
+    wholescatter_files: list[Path],
+    output_path: Path,
+    folder_name: str = "wholescatters",
+) -> Path:
+    """複数のファイルをコピーして指定フォルダに格納
+
+    Args:
+        wholescatter_files: コピーするファイルのパスリスト
+        output_path: 出力先ディレクトリ
+        folder_name: 作成するフォルダ名
+
+    Returns:
+        ファイルがコピーされたフォルダのパス
+    """
+    if not wholescatter_files:
+        raise ValueError("コピーするファイルが見つかりません")
+
+    # 出力フォルダを作成
+    wholescatter_folder = output_path / folder_name
+    wholescatter_folder.mkdir(parents=True, exist_ok=True)
+
+    # ファイルをコピー
+    for wholescatter_file in wholescatter_files:
+        try:
+            dest_file = wholescatter_folder / wholescatter_file.name
+            shutil.copy2(wholescatter_file, dest_file)
+            print(f"✓ {wholescatter_file.name} をコピーしました")
+        except Exception as e:
+            print(f"✗ {wholescatter_file.name} のコピーに失敗しました: {e}")
+
+    return wholescatter_folder
+
+
 if __name__ == "__main__":
     try:
         # パス入力
         source_path, output_path = get_result_paths()
-        
+
         print("\n" + "=" * 50)
         print("処理を開始します")
         print("=" * 50 + "\n")
-        
+
         # CSV統合処理
         print("【CSV統合処理】")
         csv_files = find_result_csv_files(source_path)
         print(f"\n見つかったCSVファイル: {len(csv_files)} 個\n")
-        
+
         if csv_files:
             merged_csv = merge_csv_files(csv_files, output_path)
             print(f"\n✓ CSV統合完了: {merged_csv}\n")
         else:
             print("※ '_result' で終わるCSVファイルが見つかりません\n")
-        
+
         # PNG画像コピー処理
         print("【PNG画像コピー処理】")
         png_files = find_scatter_png_files(source_path)
         print(f"\n見つかったPNGファイル: {len(png_files)} 個\n")
-        
+
         if png_files:
             scatter_folder = copy_scatter_files(png_files, output_path)
             print(f"\n✓ PNG画像コピー完了: {scatter_folder}\n")
         else:
             print("※ '_scatter' で終わるPNGファイルが見つかりません\n")
-        
+
+        # Wholescatter ファイルコピー処理
+        print("【Wholescatter ファイルコピー処理】")
+        wholescatter_files = find_wholescatter_files(source_path)
+        print(f"\n見つかったファイル: {len(wholescatter_files)} 個\n")
+
+        if wholescatter_files:
+            wholescatter_folder = copy_wholescatter_files(
+                wholescatter_files, output_path
+            )
+            print(f"\n✓ Wholescatter ファイルコピー完了: {wholescatter_folder}\n")
+        else:
+            print("※ '_wholescatter' で終わるファイルが見つかりません\n")
+
         print("=" * 50)
         print("すべての処理が完了しました")
         print("=" * 50)
-        
+
     except Exception as e:
         print(f"\n✗ エラーが発生しました: {e}")
         import traceback
+
         traceback.print_exc()
