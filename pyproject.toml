@@ -11,4 +11,5 @@ dependencies = [
 [tool.uv.workspace]
 members = [
     "DPP4_FAP_enzeavour_train",
+    "Chymotrypsin_feasibility_study_detailed_result",
 ]
