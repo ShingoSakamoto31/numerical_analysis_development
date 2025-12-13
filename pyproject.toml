@@ -12,4 +12,5 @@ dependencies = [
 members = [
     "DPP4_FAP_enzeavour_train",
     "Chymotrypsin_feasibility_study_detailed_result",
+    "CELA3A_feasibility_study",
 ]
