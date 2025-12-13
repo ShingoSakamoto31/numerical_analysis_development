@@ -5,8 +5,13 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "analysisrun",
+    "matplotlib>=3.10.8",
     "numpy>=2.3.5",
     "pandas>=2.3.3",
     "scikit-learn>=1.8.0",
     "scipy>=1.16.3",
 ]
+
+[tool.uv.sources]
+analysisrun = { git = "https://github.com/cosomil/analysisrun", tag = "v0.0.6" }
