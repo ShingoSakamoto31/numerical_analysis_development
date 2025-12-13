@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 import sys
+import time
+import traceback
 
 import numpy as np
 import pandas as pd
@@ -46,6 +48,14 @@ def analyze(args: AnalyzeArgs[Context]) -> pd.Series:
             fields_data_name=fields.data_name,
             sample=sample,
             total_wells=total_wells,
+            area_1=None,
+            area_2=None,
+            area_3=None,
+            area_4=None,
+            area_5=None,
+            area_6=None,
+            area_7=None,
+            area_8=None,
             dpp4_homodimer=None,
             dpp4_fap_heterodimer=None,
             fap_homodimer=None,
@@ -99,6 +109,14 @@ def analyze(args: AnalyzeArgs[Context]) -> pd.Series:
             fields_data_name=fields.data_name,
             sample=sample,
             total_wells=total_wells,
+            area_1=None,
+            area_2=None,
+            area_3=None,
+            area_4=None,
+            area_5=None,
+            area_6=None,
+            area_7=None,
+            area_8=None,
             dpp4_homodimer=None,
             dpp4_fap_heterodimer=None,
             fap_homodimer=None,
@@ -124,12 +142,27 @@ def analyze(args: AnalyzeArgs[Context]) -> pd.Series:
             script_dir=script_dir,
         )
 
-    g1, g2, g3, r1, r2, r3, r4, r5 = scatter_fitting(green, red, sample, fields, output)
-    scatter_image_output(
-        green, red, g1, g2, g3, r1, r2, r3, r4, r5, sample, fields, output
+    g0, g1, g2, g3, g4, r1, r2, r3, r4, r5 = scatter_fitting(
+        green, red, sample, fields, output
     )
-    dpp4_homodimer, dpp4_fap_heterodimer, fap_homodimer, dpp4_homodimer_ratio = (
-        paramater_calculator(green, red, g1, g2, g3, r1, r3, r5, total_wells)
+    scatter_image_output(
+        green, red, g0, g1, g2, g3, g4, r1, r2, r3, r4, r5, sample, fields, output
+    )
+    (
+        area1,
+        area2,
+        area3,
+        area4,
+        area5,
+        area6,
+        area7,
+        area8,
+        dpp4_homodimer,
+        dpp4_fap_heterodimer,
+        fap_homodimer,
+        dpp4_homodimer_ratio,
+    ) = paramater_calculator(
+        green, red, g0, g1, g2, g3, g4, r1, r2, r3, r4, r5, total_wells
     )
     qc_fap, qc_dpp4_homodimer_ratio, qc_result = QC_sample_qc_conductor(
         sample, fap_homodimer, dpp4_homodimer_ratio
@@ -139,6 +172,14 @@ def analyze(args: AnalyzeArgs[Context]) -> pd.Series:
         fields_data_name=fields.data_name,
         sample=sample,
         total_wells=total_wells,
+        area_1=area1,
+        area_2=area2,
+        area_3=area3,
+        area_4=area4,
+        area_5=area5,
+        area_6=area6,
+        area_7=area7,
+        area_8=area8,
         dpp4_homodimer=dpp4_homodimer,
         dpp4_fap_heterodimer=dpp4_fap_heterodimer,
         fap_homodimer=fap_homodimer,
@@ -287,24 +328,49 @@ def process_copied_folder(copied_folder_path: Path) -> None:
     subfolders = [p for p in copied_folder_path.iterdir() if p.is_dir()]
     total = len(subfolders)
 
-    def print_progress_bar(iteration: int, total: int, prefix: str = '', suffix: str = '', length: int = 40) -> None:
+    def print_progress_bar(
+        iteration: int,
+        total: int,
+        prefix: str = "",
+        suffix: str = "",
+        length: int = 40,
+        elapsed_time: float = 0.0,
+    ) -> None:
         """シンプルなコンソール進捗バーを表示するヘルパー
         iteration: 現在のインデックス (1-based)
         total: 合計数
         prefix/suffix: 表示用テキスト
         length: バーの長さ
+        elapsed_time: 経過時間（秒）
         """
         if total == 0:
             return
         percent = iteration / total
         filled_length = int(length * percent)
-        bar = '█' * filled_length + '-' * (length - filled_length)
-        sys.stdout.write(f"\r{prefix} |{bar}| {iteration}/{total} {int(percent*100)}% {suffix}")
+        bar = "█" * filled_length + "-" * (length - filled_length)
+
+        # 経過時間をHH:MM:SS形式に変換
+        hours = int(elapsed_time // 3600)
+        minutes = int((elapsed_time % 3600) // 60)
+        seconds = int(elapsed_time % 60)
+        time_str = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+
+        sys.stdout.write(
+            f"\r{prefix} |{bar}| {iteration}/{total} {int(percent * 100)}% [{time_str}] {suffix}"
+        )
         sys.stdout.flush()
 
+    start_time = time.time()
     for idx, subfolder in enumerate(subfolders, start=1):
         subfolder_name = subfolder.name
-        print_progress_bar(idx, total, prefix='Processing', suffix=subfolder_name)
+        elapsed_time = time.time() - start_time
+        print_progress_bar(
+            idx,
+            total,
+            prefix="Processing",
+            suffix=subfolder_name,
+            elapsed_time=elapsed_time,
+        )
 
         # フォルダと同じ名前のCSVファイルを探す
         input_csv_path = subfolder / f"{subfolder_name}.csv"
@@ -339,10 +405,14 @@ def process_copied_folder(copied_folder_path: Path) -> None:
 
         except Exception as e:
             print(f"\nエラー: {input_csv_path}の処理中にエラーが発生しました: {e}")
+            print(traceback.format_exc())  # ★これを追加（どの行か出る）
 
     # 完了表示
     if total > 0:
-        print_progress_bar(total, total, prefix='Processing', suffix='done')
+        elapsed_time = time.time() - start_time
+        print_progress_bar(
+            total, total, prefix="Processing", suffix="done", elapsed_time=elapsed_time
+        )
         print()  # 改行
 
 

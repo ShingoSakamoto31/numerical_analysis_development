@@ -341,6 +341,75 @@ def FAP_R(data, sample_name, data_name, ax):
     return mu_r1, sigma_r1, r1
 
 
+def FAP_G(data, sample_name, data_name, ax):
+    x, y = eh.make(data, num_bins=100, sigma=3)
+    X = np.repeat(x, y)
+
+    n_components = 2
+    vbgmm = BayesianGaussianMixture(n_components=n_components, random_state=42)
+    vbgmm.fit(X.reshape(-1, 1))
+
+    means = vbgmm.means_.flatten()
+    covariances = vbgmm.covariances_.flatten()
+    weights = vbgmm.weights_.flatten()
+
+    covs = np.sqrt(covariances)  # ★ 標準偏差（sigma）を作る
+
+    def mahalanobis_distance(mu1, mu2, sigma1, sigma2):
+        Dm = (mu2 - mu1) / np.sqrt(sigma2**2 + sigma1**2)
+        return np.abs(Dm)
+
+    # ★ ここは covariances の sqrt を二重にしない
+    FAP_Dm = mahalanobis_distance(means[0], means[1], covs[0], covs[1])
+
+    if FAP_Dm < 0.5:
+        vbgmm = BayesianGaussianMixture(n_components=1, random_state=42)
+        vbgmm.fit(X.reshape(-1, 1))
+        mu_g1 = vbgmm.means_[0, 0]
+        sigma_g1 = np.sqrt(vbgmm.covariances_[0, 0, 0])
+        means, covs, weights = [mu_g1], [sigma_g1], [1.0]
+    else:
+        top_components = sorted(
+            [(i, w, m, s) for i, (w, m, s) in enumerate(zip(weights, means, covs))],
+            key=lambda x: x[2],
+        )
+        mu_g1 = top_components[1][2]
+        sigma_g1 = top_components[1][3]
+
+    civ = 2.58
+    g1 = mu_g1 - civ * sigma_g1
+    g0 = 7500 if g1 > 7500 else g1 - 1
+
+    hist = ax.hist(
+        data, bins=100, density=True, color="black", alpha=0.3, label="original"
+    )
+
+    x_range = np.linspace(0, 20000, 1000)
+    vbgmm_fits = []
+    for i, (mean, sigma, weight) in enumerate(zip(means, covs, weights), start=1):
+        pdf = weight * norm.pdf(x_range, mean, sigma)  # ★ sigma(標準偏差)を渡す
+        (vgbmm_fit,) = ax.plot(
+            x_range, pdf, linewidth=3, label=f"VGBMM Fit {i}", color="green"
+        )
+        vbgmm_fits.append(vgbmm_fit)
+
+    threshold = ax.vlines(
+        [g0, g1],
+        0,
+        np.max(ax.hist(data, bins=100)[0]),
+        color="red",
+        linestyles="--",
+        linewidth=3,
+        label="threshold",
+    )
+    ax.legend(handles=[hist[2][0], *vbgmm_fits, threshold], fontsize=12)
+    ax.set_xlim([0, 20000])
+    ax.set_xlabel("green fluorescence intensity", fontsize=16)
+    ax.set_title("FAP green Histogram with VBGMM Fit", fontsize=16)
+
+    return mu_g1, sigma_g1, g0, g1, FAP_Dm
+
+
 # Green方向にDPP4成分をフィッティングする関数
 def DPP4_G(data, sample_name, data_name, ax):
     x, y = eh.make(data)
@@ -355,9 +424,9 @@ def DPP4_G(data, sample_name, data_name, ax):
     sigma2 = params_sorted[3]
 
     civ = 3.29
-    g1 = mu1 + civ * sigma1
-    g2 = mu2 - civ * sigma2
-    g3 = mu2 + civ * sigma2
+    g2 = mu1 + civ * sigma1
+    g3 = mu2 - civ * sigma2
+    g4 = mu2 + civ * sigma2
 
     g_Dm = Mahalanobis_distance(mu1, mu2, sigma1, sigma2)
 
@@ -371,13 +440,13 @@ def DPP4_G(data, sample_name, data_name, ax):
     ax.set_xlim([0, 20000])
     ax.set_ylim([0, np.max(y) * 1.1])
     ax.vlines(
-        [g1, g2, g3], 0, np.max(y) * 1.1, colors="black", linestyles="dashed", alpha=0.5
+        [g2, g3, g4], 0, np.max(y) * 1.1, colors="black", linestyles="dashed", alpha=0.5
     )
 
     ax.set_xlabel("green fluorescence intensity", fontsize=12)
     ax.set_title(f"{sample_name}_{data_name}_DPP4_green_histogram", fontsize=12)
 
-    return mu1, sigma1, mu2, sigma2, g1, g2, g3, g_Dm
+    return mu1, sigma1, mu2, sigma2, g2, g3, g4, g_Dm
 
 
 # Red方向にDPP4成分をフィッティングする関数
@@ -505,7 +574,7 @@ def DPP4_R(data, green, g1, g2, g3, sample_name, data_name, ax):
             plot_model_with_lines(x, y, double_gaussian, params, [r2, r3, r4, r5])
 
         return mu1, sigma1, mu2, sigma2, r2, r3, r4, r5
-    
+
     except Exception:
         # フォールバック：green で2分して1山フィット×2
         data_1 = data[green < g1]
