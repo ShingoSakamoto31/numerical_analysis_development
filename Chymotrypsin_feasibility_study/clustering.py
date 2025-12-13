@@ -122,10 +122,10 @@ def scatter_image_output(df_new, fields, sample, output):
     axes.tick_params(labelsize=24)
 
     scatter_fig.tight_layout()
-    axes.set_title(f"{fields.data_name}_{sample}_scatter.png", fontsize=16)
+    axes.set_title(f"{sample}_{fields.data_name}", fontsize=16)
     output(
         scatter_fig,
-        f"{fields.data_name}_{sample}_scatter.png",
+        f"{sample}_{fields.data_name}_scatter.png",
         "scatter",
         bbox_inches="tight",
     )
